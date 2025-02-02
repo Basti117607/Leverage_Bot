@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from ..models.leverage_game import LeverageGame
 import logging
 import asyncio
-import urllib.parse  # Add this line at the beginning of the file
+import urllib.parse
 
 # States für den ConversationHandler
 LEVERAGE, POSITION_SIZE, TRADING = range(3)
@@ -12,6 +12,10 @@ LEVERAGE, POSITION_SIZE, TRADING = range(3)
 MAX_LEVERAGE = 125
 MIN_POSITION = 100
 MAX_POSITION = 10000
+
+class GameHandler:
+    def __init__(self, leaderboard=None):
+        self.leaderboard = leaderboard
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Startet den Leverage-Simulator."""
@@ -27,14 +31,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['game'] = game
     
     start_message = (
-        "🎰 YO DEGEN, READY TO LOSE SOME MONEY? 🎰\n"
+        "🎰 WELCOME TO THE CASINO OF PAIN 🎰\n"
         "───────────────\n"
-        "🤡 Willkommen im UDEGEN Casino!\n"
-        "Wo Lambos zu Busfahrkarten werden...\n\n"
-        "⚡ Wähle deinen Hebel (1-125x):\n"
-        "Je mehr Hebel, desto mehr Spaß! 🫡\n"
-        "(oder schnellerer Totalverlust lol)\n\n"
-        "Sende eine Zahl zwischen 1-125..."
+        "🤡 Ready to turn your Lambo dreams into bus tickets?\n"
+        "Where millionaires become McDonald's employees...\n\n"
+        "⚡ Choose your financial death multiplier (1-125x):\n"
+        "More leverage = faster loss porn! 📸\n"
+        "(or instant liquidation if you're speedrunning)\n\n"
+        "Send a number 1-125 and let's get rekt..."
     )
     
     if update.callback_query:
@@ -50,30 +54,54 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_leverage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Setzt den Hebel für das Trading."""
     try:
-        leverage = int(update.message.text)
+        # Handle both callback query and text message
+        if update.callback_query:
+            query = update.callback_query
+            leverage = int(query.data.split('_')[1])  # leverage_X -> X
+            await query.answer()  # Acknowledge the button click
+        else:
+            leverage = int(update.message.text)
+        
         if 1 <= leverage <= MAX_LEVERAGE:
-            context.user_data['game'].leverage = leverage
+            game = context.user_data.get('game')
+            if not game:
+                game = LeverageGame()
+                context.user_data['game'] = game
             
-            # Lustige Kommentare basierend auf Hebelgröße
-            leverage_comment = "🐔 Bisschen konservativ... aber ok!" if leverage < 10 else \
-                             "😎 Solid Degen Move!" if leverage < 30 else \
-                             "🔥 ABSOLUTE CHAD ENERGY!" if leverage < 50 else \
-                             "💀 RIP BOZO! Gleich gibt's Loss Porn!"
+            game.leverage = leverage
             
-            await update.message.reply_text(
+            # Leverage comments based on size
+            leverage_comment = "🐔 Playing it safe? What a coward..." if leverage < 10 else \
+                             "😎 Now we're talking! Still a bit soft tho" if leverage < 30 else \
+                             "🔥 ABSOLUTE DEGEN ENERGY! LFG!" if leverage < 50 else \
+                             "💀 RIP BOZO! Time to update that LinkedIn!"
+            
+            message = (
                 f"{leverage_comment}\n\n"
-                f"⚡ {leverage}x Hebel aktiviert!\n\n"
-                "💰 Jetzt noch dein Einsatz (100-10000 $):\n"
-                "Vergiss nicht: Nur echte Degens gehen All-In! 🎰"
+                f"⚡ {leverage}x leverage activated! NGMI\n\n"
+                "💰 Now your position size (100-10000 $):\n"
+                "Remember: Real degens go all-in with rent money! 🎰"
             )
+            
+            if update.callback_query:
+                await query.edit_message_text(message)
+            else:
+                await update.message.reply_text(message)
+            
             return POSITION_SIZE
         else:
-            await update.message.reply_text(
-                "❌ Bruh... 1-125x oder bist du zu high zum Lesen? 🥴"
-            )
+            error_message = "❌ Bruh... can you even read? 1-125x or go back to school! 🥴"
+            if update.callback_query:
+                await query.edit_message_text(error_message)
+            else:
+                await update.message.reply_text(error_message)
             return LEVERAGE
-    except ValueError:
-        await update.message.reply_text("❌ Digga, das ist keine Zahl! 🤦‍♂️")
+    except (ValueError, IndexError):
+        error_message = "❌ That's not a number, that's your IQ! 🤦‍♂️"
+        if update.callback_query:
+            await update.callback_query.edit_message_text(error_message)
+        else:
+            await update.message.reply_text(error_message)
         return LEVERAGE
 
 async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,39 +112,40 @@ async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
             game = context.user_data['game']
             game.position_size = position
             
-            # Size Kommentare
-            size_comment = "🐜 Ameisenwette... aber ok!" if position < 1000 else \
-                          "🦊 Fuchs-Energy!" if position < 5000 else \
-                          "🦍 GORILLA SIZED BET! LFG!!!"
+            # Size comments
+            size_comment = "🐜 Ant-sized bet... do you even degen?" if position < 1000 else \
+                          "🦊 Starting to look serious!" if position < 5000 else \
+                          "🦍 GORILLA BALLS ENERGY! THIS IS THE WAY!"
             
             keyboard = [
                 [
-                    InlineKeyboardButton("🎰 YOLO IT!", callback_data='trade'),
-                    InlineKeyboardButton("🐔 Exit", callback_data='quit')
+                    InlineKeyboardButton("🎰 SEND IT!", callback_data='trade'),
+                    InlineKeyboardButton("🐔 Run away", callback_data='quit')
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                f"🎰 SETUP READY TO DEGEN 🎰\n"
+                f"🎰 READY TO GET REKT 🎰\n"
                 "═══════════════════\n"
                 f"{size_comment}\n"
-                f"💼 Bags: ${position:,.2f}\n"
-                f"⚡ Hebel: {game.leverage}x\n"
-                f"📈 Entry: ${game.initial_price:,.2f}\n"
-                f"💀 Liq Price: ${game.calculate_liquidation_price():,.2f}\n"
+                f"💼 Your future debt: ${position:,.2f}\n"
+                f"⚡ Pain multiplier: {game.leverage}x\n"
+                f"📈 Entry to hell: ${game.initial_price:,.2f}\n"
+                f"💀 Liquidation imminent: ${game.calculate_liquidation_price():,.2f}\n"
                 "───────────────\n"
-                "🚀 Ready to get rekt? 🚀",
+                "🚀 Ready to update that resume? 🚀",
                 reply_markup=reply_markup
             )
             return TRADING
         else:
             await update.message.reply_text(
-                f"⚠️ Bitte wähle eine Position zwischen ${MIN_POSITION} und ${MAX_POSITION}!"
+                f"⚠️ Pick a number between ${MIN_POSITION} and ${MAX_POSITION}!\n"
+                "Even degens can count, right? 🤔"
             )
             return POSITION_SIZE
     except ValueError:
-        await update.message.reply_text("❌ Bitte gib eine gültige Zahl ein!")
+        await update.message.reply_text("❌ That's a number like LUNA is a stablecoin! Try again!")
         return POSITION_SIZE
 
 async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,13 +156,11 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.info(f"Trade callback erhalten: {query.data}")
         await query.answer()
         
-        # Get user information 
-        user_name = "Anonym"
-        
         if not context.user_data.get('game'):
             logging.warning("Kein aktives Spiel gefunden")
             await query.edit_message_text(
-                "⚠️ Fehler: Kein aktives Spiel.\nBitte starte ein neues Spiel"
+                "⚠️ Error: No active game.\n"
+                "Start a new one and lose money properly! 🎰"
             )
             context.user_data.pop('game', None)  # Clean up any invalid game state
             return ConversationHandler.END
@@ -149,17 +176,32 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user = query.from_user
             user_name = f"@{user.username}" if user.username else "Anonym"
             
-            # Erstelle den Tweet-Text
+            # Add score to leaderboard if available
+            game_handler = context.bot_data.get('game_handler')
+            if game_handler and game_handler.leaderboard:
+                game_handler.leaderboard.add_score(
+                    username=user_name,
+                    score=stats['score'],
+                    leverage=stats['leverage'],
+                    pnl=stats['profit_loss'],
+                    ticks=stats['ticks']
+                )
+                # Get leaderboard text
+                leaderboard_text = game_handler.leaderboard.format_leaderboard()
+            else:
+                leaderboard_text = ""
+            
+            # Create tweet text
             tweet_text = (
-                f"🎮 Just played LeverageBot!\n"
-                f"💰 P&L: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:+.1f}%)\n"
-                f"⚡ {stats['leverage']}x Leverage\n"
-                f"🎲 Survived: {stats['ticks']} ticks\n"
+                f"🎮 Just got REKT on LeverageBot!\n"
+                f"💰 Damage Report: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:+.1f}%)\n"
+                f"⚡ {stats['leverage']}x leverage because I hate money\n"
+                f"🎲 Survived: {stats['ticks']} ticks before liquidation\n"
                 f"🏆 Score: {stats['score']:,.1f}\n"
-                f"\n🤖 @UDEGENBot"
+                f"\n🤖 @UDEGENBot - Where dreams become nightmares"
             )
             
-            # Erstelle die Twitter Share URL
+            # Create the Twitter Share URL
             tweet_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
             
             keyboard = [
@@ -176,7 +218,8 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 Finaler P&L: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:.1f}%)\n"
                 f"🎲 Ticks überlebt: {stats['ticks']}\n"
                 f"🏆 Final Score: {stats['score']:,.1f}\n"
-                "═══════════════════"
+                "═══════════════════\n\n"
+                f"{leaderboard_text}"
             )
             await query.edit_message_text(
                 message,
@@ -402,3 +445,29 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
         return ConversationHandler.END
+
+async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt die Bestenliste an"""
+    query = update.callback_query
+    if not query:
+        return
+            
+    await query.answer()
+    
+    if not hasattr(context, 'handler') or not context.handler.leaderboard:
+        await query.edit_message_text(
+            "⚠️ Bestenliste ist nicht verfügbar!",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
+            ]])
+        )
+        return
+            
+    leaderboard_text = context.handler.leaderboard.format_leaderboard()
+        
+    await query.edit_message_text(
+        leaderboard_text,
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
+        ]])
+    )

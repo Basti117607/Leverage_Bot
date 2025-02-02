@@ -2,95 +2,94 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 HELP_SECTIONS = {
-    'main': """📈 *UDEGEN Leverage Trading Simulator*
+    'main': """🎰 *WELCOME TO THE UDEGEN CASINO* 🎰
 
-Willkommen beim UDEGEN Trading Simulator! 
+Yo degens! Ready to turn your Lambo dreams into bus tickets? 🚀
 
-*Verfügbare Befehle:*
-/start - Starte ein neues Trading-Spiel
-/help - Zeige diese Hilfe
-/basics - Grundlagen des Leverage Trading
-/interface - Erkläre das Trading Interface
-/liquidation - Erkläre Liquidation
-/tips - Trading Tipps
+*Commands for Maximum REKT:*
+/start - YOLO your life savings
+/help - How to lose money faster
+/basics - Learn why you'll get rekt
+/interface - Your path to liquidation
+/liquidation - The art of going broke
+/tips - Pro tips (still gonna lose tho)
 
-_Wähle einen Befehl für mehr Informationen_""",
+_Pick your poison, anon!_ 💀""",
 
-    'basics': """🎮 *Trading Grundlagen*
+    'basics': """🎮 *DEGEN BASICS 101* 🎮
 
-*Hebel (Leverage):*
-• Wählbar: 1x bis 125x
-• Höherer Hebel bedeutet:
-  📈 Größere Gewinne möglich
-  📉 Höheres Risiko
-  ⚡ Mehr Volatilität
-  💀 Schnellere Liquidation
+*Leverage (AKA Your Doom):*
+• Choose 1x-125x
+• Higher leverage means:
+  📈 More hopium
+  📉 Faster liquidations
+  ⚡ Maximum heart attacks
+  💀 Speedrun to zero
 
-*Position Size:*
-• Handelbar: $100 - $10,000
-• Bestimmt max. Verlust
-• Beispiel: $1,000 Position = max. $1,000 Verlust
+*Position Size (Your Future Debt):*
+• YOLO range: $100 - $10,000
+• Determines how much you'll cry
+• Example: $1,000 position = 1 month of ramen 🍜
 
-/help - Zurück zur Haupthilfe""",
+/help - Back to copium central""",
 
-    'interface': """📊 *Trading Interface*
+    'interface': """📊 *YOUR ROAD TO REKT* 📊
 
-*Preisinformationen:*
-💹 *Aktueller Preis:* Momentaner Handelspreis
-📊 *P&L (Profit/Loss):*
-  • Dollar: Aktueller Gewinn/Verlust
-  • Prozent: Rendite auf Position
+*Price Info (AKA Pain Metrics):*
+💹 *Current Price:* Watch your money evaporate
+📊 *P&L (Pain/Loss):*
+  • USD: How much you're down bad
+  • %: Your portfolio's funeral progress
 
-*Indikatoren:*
-⚡ *Hebel:* Dein aktiver Hebelfaktor
-💀 *Liquidationspreis:* Preis bei Totalverlust
-⏱️ *Laufzeit:* Aktive Handelsdauer
+*Pro Degen Stats:*
+⚡ *Leverage:* Your financial death multiplier
+💀 *Liquidation Price:* Your inevitable destiny
+⏱️ *Duration:* Time spent malding
 
-*Buttons:*
-🎲 *Weiter:* Nächster Preisschritt
-💰 *Verkaufen:* Position schließen
-❌ *Beenden:* Spiel beenden
+*YOLO Buttons:*
+🎲 *Next:* Generate more loss porn
+💰 *Sell:* Accept defeat
+❌ *Exit:* Back to McDonald's job application
 
-/help - Zurück zur Haupthilfe""",
+/help - Return to hopium central""",
 
-    'liquidation': """💀 *Liquidation verstehen*
+    'liquidation': """💀 *THE ART OF GETTING REKT* 💀
 
-*Berechnung:*
-• 1x Hebel: Keine Liquidation
-• Formel: Einstieg × (1 - 1/Hebel)
+*NGMI Math:*
+• 1x: Too boring to get rekt
+• Formula: Entry × (1 - 1/Leverage) = Pain
 
-*Beispiele:*
-• 10x: Liquidation bei -10%
-• 50x: Liquidation bei -2%
-• 100x: Liquidation bei -1%
+*Speedrun Guide:*
+• 10x: Die in 10 minutes
+• 50x: Die in 2 minutes
+• 100x: Spawn kill enabled
 
-Je höher der Hebel, desto näher der
-Liquidationspreis am Einstiegspreis!
+Pro tip: Higher leverage = faster loss porn! 📸
 
-/help - Zurück zur Haupthilfe""",
+/help - Back to copium dispensary""",
 
-    'tips': """💡 *Trading Tipps*
+    'tips': """💡 *HOW TO LOSE MONEY FASTER* 💡
 
-1. *Start klein:*
-   • Beginne mit 2-5x Hebel
-   • Lerne die Bewegungen kennen
+1. *Start Small (cringe):*
+   • Use 2-5x like a coward
+   • Learn how to lose slowly
 
-2. *Risikomanagement:*
-   • Beachte den Liquidationspreis
-   • Nutze angemessene Position Size
+2. *Risk Management (lol):*
+   • Watch liquidation price approach
+   • Size position for maximum pain
 
-3. *Strategie:*
-   • Sei geduldig
-   • Beobachte Preisbewegungen
-   • Übe verschiedene Hebelgrößen
+3. *"Strategy":*
+   • FOMO in at the top
+   • Panic sell the bottom
+   • Repeat until broke
 
-⚠️ *Wichtig:*
-• Nur ein Simulator!
-• Nie mit echtem Geld handeln!
-• Echtes Trading hat zusätzliche
-  Faktoren wie Gebühren & Slippage
+⚠️ *SUPER IMPORTANT:*
+• This is just a simulator!
+• Real trading has more ways to lose money
+• Not financial advice (duh)
+• Your wife's boyfriend will thank you
 
-/help - Zurück zur Haupthilfe"""
+/help - Back to copium central"""
 }
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
