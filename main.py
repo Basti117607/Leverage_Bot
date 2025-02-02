@@ -1,16 +1,15 @@
-import logging
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler, ContextTypes
 import os
-import sys
+import logging
 from dotenv import load_dotenv
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
 from src.handlers.game_handlers import (
+    LEVERAGE, POSITION_SIZE, TRADING,
     start_command,
     set_leverage,
     set_position,
     trade,
-    LEVERAGE,
-    POSITION_SIZE,
-    TRADING
+    GameHandler
 )
 from src.handlers.help_handlers import (
     help_command,
@@ -19,64 +18,99 @@ from src.handlers.help_handlers import (
     liquidation_command,
     tips_command
 )
-
-# Logging konfigurieren
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('bot.log')
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from src.handlers.admin_handlers import AdminHandler
+from src.models.leaderboard import Leaderboard
+from src.utils.process_lock import SingleInstanceLock
 
 def main():
-    """Startet den Bot."""
+    # Load environment variables
+    load_dotenv()
+    
+    # Initialize logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('bot.log'),
+            logging.StreamHandler()
+        ]
+    )
+    
+    logger = logging.getLogger(__name__)
+    
     try:
-        # Lade Umgebungsvariablen
-        load_dotenv()
-        
-        # Bot Token aus Umgebungsvariablen laden
+        # Get the bot token
         token = os.getenv('BOT_TOKEN')
         if not token:
             raise ValueError("Kein BOT_TOKEN in .env Datei gefunden!")
         
-        # Application erstellen
+        # Create data directory
+        os.makedirs("data", exist_ok=True)
+        
+        # Create process lock
+        lock = SingleInstanceLock("data/bot.lock")
+        if not lock.acquire():
+            logger.error("Bot läuft bereits! Beende diese Instanz.")
+            return
+        
+        # Initialize leaderboard
+        leaderboard = Leaderboard("data/leaderboard.json")
+        
+        # Initialize handlers
+        game_handler = GameHandler(leaderboard)
+        admin_ids = [int(id) for id in os.getenv('ADMIN_IDS', '').split(',') if id]
+        admin_handler = AdminHandler(leaderboard=leaderboard, admin_ids=admin_ids, lock=lock)
+        
+        # Create application
         application = Application.builder().token(token).build()
         
-        # Conversation Handler für das Trading-Spiel
+        # Add game handler to context
+        application.bot_data['game_handler'] = game_handler
+        
+        # Add conversation handler first (higher priority)
         conv_handler = ConversationHandler(
             entry_points=[
-                CommandHandler('start', start_command),
+                CommandHandler('start', start_command)
             ],
             states={
-                LEVERAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_leverage)],
-                POSITION_SIZE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_position)],
-                TRADING: [CallbackQueryHandler(trade)]
+                LEVERAGE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, set_leverage),
+                    CallbackQueryHandler(set_leverage, pattern='^leverage_')
+                ],
+                POSITION_SIZE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, set_position),
+                ],
+                TRADING: [
+                    CallbackQueryHandler(trade, pattern='^(up|down|quit|trade)$')
+                ],
             },
-            fallbacks=[CommandHandler('start', start_command)]
+            fallbacks=[]  # Wir brauchen keine fallbacks, da wir quit über den Button handeln
         )
         
-        # Handler hinzufügen
         application.add_handler(conv_handler)
-        application.add_handler(CallbackQueryHandler(start_command, pattern='^start$'))  # Handle "Neues Spiel" button
         
-        # Help Handler hinzufügen
+        # Add admin command handlers (higher priority than other commands)
+        application.add_handler(CommandHandler('clearleaderboard', admin_handler.clear_leaderboard), group=1)
+        application.add_handler(CommandHandler('restart', admin_handler.restart_bot), group=1)
+        application.add_handler(CommandHandler('stop', admin_handler.stop_bot), group=1)
+        
+        # Add global callback handler for start button
+        application.add_handler(CallbackQueryHandler(start_command, pattern='^start$'))
+        
+        # Add other command handlers (lower priority)
         application.add_handler(CommandHandler('help', help_command))
         application.add_handler(CommandHandler('basics', basics_command))
         application.add_handler(CommandHandler('interface', interface_command))
         application.add_handler(CommandHandler('liquidation', liquidation_command))
         application.add_handler(CommandHandler('tips', tips_command))
         
-        # Bot starten
+        # Start the bot
         logger.info("Bot wird gestartet...")
         application.run_polling()
         
     except Exception as e:
-        logger.error(f"Kritischer Fehler: {str(e)}")
-        sys.exit(1)
+        logger.error(f"Fehler beim Starten des Bots: {e}")
+        raise
 
 if __name__ == '__main__':
     main()
