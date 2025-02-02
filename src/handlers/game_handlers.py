@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from ..models.leverage_game import LeverageGame
 import logging
 import asyncio
+import urllib.parse  # Add this line at the beginning of the file
 
 # States für den ConversationHandler
 LEVERAGE, POSITION_SIZE, TRADING = range(3)
@@ -148,9 +149,23 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user = query.from_user
             user_name = f"@{user.username}" if user.username else "Anonym"
             
+            # Erstelle den Tweet-Text
+            tweet_text = (
+                f"🎮 Just played LeverageBot!\n"
+                f"💰 P&L: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:+.1f}%)\n"
+                f"⚡ {stats['leverage']}x Leverage\n"
+                f"🎲 Survived: {stats['ticks']} ticks\n"
+                f"🏆 Score: {stats['score']:,.1f}\n"
+                f"\n🤖 @UDEGENBot"
+            )
+            
+            # Erstelle die Twitter Share URL
+            tweet_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
+            
             keyboard = [
                 [
-                    InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
+                    InlineKeyboardButton("🎮 Neues Spiel", callback_data='start'),
+                    InlineKeyboardButton("🐦 Share on Twitter", url=tweet_url)
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)

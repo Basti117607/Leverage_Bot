@@ -17304,3 +17304,58 @@ telegram.error.Conflict: Conflict: terminated by other getUpdates request; make 
 2025-02-02 01:22:53,339 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
 2025-02-02 01:23:03,453 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
 2025-02-02 01:23:13,695 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:23:23,736 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:23:33,765 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:23:43,793 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:23:53,848 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:03,970 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:14,011 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:24,152 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:34,283 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:44,419 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:24:54,660 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:04,796 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:14,832 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:24,865 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:34,899 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:37,950 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:37,951 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-02-02 01:25:37,951 - telegram.ext.Application - INFO - Application.stop() complete
+2025-02-02 01:25:42,887 - __main__ - INFO - Bot wird gestartet...
+2025-02-02 01:25:43,075 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getMe "HTTP/1.1 200 OK"
+2025-02-02 01:25:43,113 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/deleteWebhook "HTTP/1.1 200 OK"
+2025-02-02 01:25:43,115 - telegram.ext.Application - INFO - Application started
+2025-02-02 01:25:48,923 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:48,924 - root - INFO - Start command triggered
+2025-02-02 01:25:48,925 - root - INFO - Start triggered by command
+2025-02-02 01:25:49,072 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/sendMessage "HTTP/1.1 200 OK"
+2025-02-02 01:25:54,120 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:54,272 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/sendMessage "HTTP/1.1 200 OK"
+2025-02-02 01:25:55,600 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:55,649 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/sendMessage "HTTP/1.1 200 OK"
+2025-02-02 01:25:57,604 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:25:57,606 - root - INFO - Trade callback erhalten: trade
+2025-02-02 01:25:57,644 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/answerCallbackQuery "HTTP/1.1 200 OK"
+2025-02-02 01:25:57,645 - root - INFO - Game state: leverage=60, position_size=5000, current_price=100, is_liquidated=False
+2025-02-02 01:25:57,645 - root - INFO - Price step: current_price=99.84417979816793, liq_price=98.33333333333333
+2025-02-02 01:25:57,708 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/editMessageText "HTTP/1.1 200 OK"
+2025-02-02 01:25:58,210 - root - INFO - Price step: current_price=99.37536984422277, liq_price=98.33333333333333
+2025-02-02 01:25:58,258 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/editMessageText "HTTP/1.1 200 OK"
+2025-02-02 01:25:58,760 - root - INFO - Price step: current_price=98.94096869901796, liq_price=98.33333333333333
+2025-02-02 01:25:58,811 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/editMessageText "HTTP/1.1 200 OK"
+2025-02-02 01:25:59,316 - root - INFO - Finale Stats: {'current_price': 98.94096869901796, 'initial_price': 100, 'profit_loss': -3177.0939029461256, 'profit_loss_percent': -63.54187805892251, 'portfolio_value': 1822.9060970538744, 'portfolio_change': -63.54187805892251, 'leverage': 60, 'position_size': 5000, 'liquidation_price': 98.33333333333333, 'ticks': 1, 'duration': 10.4, 'price_trend': '📉', 'score': -492.19327101789867}
+2025-02-02 01:25:59,373 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/editMessageText "HTTP/1.1 200 OK"
+2025-02-02 01:26:03,445 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:26:03,448 - root - INFO - Trade callback erhalten: quit
+2025-02-02 01:26:03,491 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/answerCallbackQuery "HTTP/1.1 200 OK"
+2025-02-02 01:26:03,492 - root - INFO - Game state: leverage=60, position_size=5000, current_price=98.94096869901796, is_liquidated=False
+2025-02-02 01:26:03,492 - root - INFO - Spiel wird beendet
+2025-02-02 01:26:03,543 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/editMessageText "HTTP/1.1 200 OK"
+2025-02-02 01:26:03,545 - root - INFO - Game ended by selling, cleaning up state
+2025-02-02 01:26:13,482 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:26:23,517 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:26:33,576 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:26:43,618 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:26:53,770 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:27:03,891 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
+2025-02-02 01:27:13,930 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot7759393411:AAG81rlkdcDJMr_NDv-_3yPL56kuC5jwoEE/getUpdates "HTTP/1.1 200 OK"
