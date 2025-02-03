@@ -15,8 +15,18 @@ MAX_LEVERAGE = 125
 MIN_POSITION = 100
 MAX_POSITION = 10000
 
+class GameHandler:
+    def __init__(self, leaderboard):
+        self.leaderboard = leaderboard
+
+    async def handle_game_end(self, user, game):
+        """Handle game end and update leaderboard."""
+        stats = game.get_stats()
+        user_name = f"@{user.username}" if user.username else "Anonym"
+        self.leaderboard.add_score(user_name, stats['score'], game.leverage, stats['profit_loss'], game.ticks)
+        return stats
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Starts the leverage simulator."""
     logging.info("Start command triggered")
     
     # Clean up previous game state
@@ -27,6 +37,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Initialize new game
     game = LeverageGame()
     context.user_data['game'] = game
+
+    # Speichere die User-ID des Spielstarters
+    context.user_data['initiator_id'] = update.effective_user.id
     
     start_message = (
         "🎰 YO DEGEN, READY TO LOSE SOME MONEY? 🎰\n"
@@ -51,13 +64,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def set_leverage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sets the leverage for trading."""
+    # Prüfe, ob der Absender der Initiator ist
+    if update.effective_user.id != context.user_data.get('initiator_id'):
+        return  # Ignoriere Nachrichten von anderen
+    
     try:
         leverage = int(update.message.text)
         if 1 <= leverage <= MAX_LEVERAGE:
             context.user_data['game'].leverage = leverage
             
-            # Fun comments based on chosen leverage
             leverage_comment = (
                 "🐔 A bit conservative... but okay!" if leverage < 10 else
                 "😎 Solid Degen Move!" if leverage < 30 else
@@ -84,6 +99,8 @@ async def set_leverage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sets the bet size for trading."""
+    if update.effective_user.id != context.user_data.get('initiator_id'):
+        return  # Ignoriere Nachrichten von andere
     try:
         position = int(update.message.text)
         if MIN_POSITION <= position <= MAX_POSITION:
@@ -186,7 +203,6 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🔥 TOP DEGENS 🔥\n{top_three_text}\n\n"
                 f"📆 Prizes drop on {prize_date}!\n"
                 f"👉 JOIN US, get in the game & WIN\n"
-        
             )
 
             # Erstelle die Twitter Share URL
@@ -216,7 +232,8 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(message, reply_markup=reply_markup)
             logging.info("Sell complete – cleaning up game state")
             context.user_data.pop('game', None)
-            return LEVERAGE  # Zurück zum Start für ein neues Spiel
+            context.user_data.pop('initiator_id', None)  # Entlasse den Initiator
+            return ConversationHandler.END
 
         # --- CONTINUE (TRADE) FLOW: Run animation for price movement ---
         game.price_steps = []
@@ -287,18 +304,17 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"🏆 DEGEN Score: {game.calculate_score():,.1f}\n"
                     "═══════════════════"
                 )
-
+                                # Dynamische Updates während der Animation
                 try:
                     await query.edit_message_text(message, reply_markup=None)
-                except telegram.BadRequest as e:
-                    if "message is not modified" not in str(e).lower():
-                        raise
-
-                await asyncio.sleep(ANIMATION_DELAY)
+                except telegram.error.RetryAfter as e:
+                    logging.error(f"Flood control exceeded. Retry in {e.retry_after} seconds")
+                    await asyncio.sleep(e.retry_after)
+                    await query.edit_message_text(message, reply_markup=None)
             except telegram.BadRequest as e:
                 if "message is not modified" not in str(e).lower():
                     raise
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(ANIMATION_DELAY)
                 continue
 
         # Finaler Update nach der Animation (falls nicht liquidiert)
