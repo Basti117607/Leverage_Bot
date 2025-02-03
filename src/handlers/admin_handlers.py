@@ -1,12 +1,13 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
+from src.models.leaderboard import Leaderboard
 import os
 import logging
 import sys
 import subprocess
 
 class AdminHandler:
-    def __init__(self, leaderboard, admin_ids=None, lock=None):
+    def __init__(self, leaderboard: Leaderboard, admin_ids=None, lock=None):
         self.leaderboard = leaderboard
         self.admin_ids = admin_ids or []
         self.lock = lock
@@ -28,7 +29,12 @@ class AdminHandler:
             
         try:
             self.leaderboard.clear()
-            await update.message.reply_text("✅ Leaderboard has been cleared!")
+            await update.message.reply_text(
+                "✅ Leaderboard has been cleared!\n"
+                "───────────────\n"
+                "🧹 All scores deleted\n"
+                "🎮 Ready for new highscores!"
+            )
             logging.info(f"Leaderboard cleared by admin {user_id}")
         except Exception as e:
             logging.error(f"Error clearing leaderboard: {e}")
@@ -83,3 +89,13 @@ class AdminHandler:
         except Exception as e:
             logging.error(f"Error restarting bot: {e}")
             await update.message.reply_text("❌ Error restarting bot!")
+
+    async def clean_leaderboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Cleans the leaderboard."""
+        self.leaderboard.clear()
+        await update.message.reply_text("Leaderboard has been cleared!")
+
+    async def show_leaderboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Shows the current leaderboard."""
+        leaderboard_text = self.leaderboard.format_leaderboard()
+        await update.message.reply_text(leaderboard_text)

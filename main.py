@@ -42,7 +42,10 @@ def main():
         # Get the bot token
         token = os.getenv('BOT_TOKEN')
         if not token:
-            raise ValueError("Kein BOT_TOKEN in .env Datei gefunden!")
+            raise ValueError("No BOT_TOKEN found in .env file, degen! Get your act together!")
+
+        # Logging message
+        logger.info("Bot is launching... Let's lose some cash, degen style!")
         
         # Create data directory
         os.makedirs("data", exist_ok=True)

@@ -1,9 +1,11 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, error as telegram
 from telegram.ext import ContextTypes, ConversationHandler
 from ..models.leverage_game import LeverageGame
+from ..models.leaderboard import Leaderboard
+
 import logging
 import asyncio
-import urllib.parse
+import urllib.parse  # Add this line at the beginning of the file
 
 # States für den ConversationHandler
 LEVERAGE, POSITION_SIZE, TRADING = range(3)
@@ -13,37 +15,33 @@ MAX_LEVERAGE = 125
 MIN_POSITION = 100
 MAX_POSITION = 10000
 
-class GameHandler:
-    def __init__(self, leaderboard=None):
-        self.leaderboard = leaderboard
-
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Startet den Leverage-Simulator."""
+    """Starts the leverage simulator."""
     logging.info("Start command triggered")
     
     # Clean up previous game state
     if 'game' in context.user_data:
         old_game = context.user_data.pop('game')
-        del old_game  # Ensure proper cleanup
+        del old_game  # Proper cleanup
     
     # Initialize new game
     game = LeverageGame()
     context.user_data['game'] = game
     
     start_message = (
-        "🎰 WELCOME TO THE CASINO OF PAIN 🎰\n"
+        "🎰 YO DEGEN, READY TO LOSE SOME MONEY? 🎰\n"
         "───────────────\n"
-        "🤡 Ready to turn your Lambo dreams into bus tickets?\n"
-        "Where millionaires become McDonald's employees...\n\n"
-        "⚡ Choose your financial death multiplier (1-125x):\n"
-        "More leverage = faster loss porn! 📸\n"
-        "(or instant liquidation if you're speedrunning)\n\n"
-        "Send a number 1-125 and let's get rekt..."
+        "🤡 Welcome to the UDEGEN Casino!\n"
+        "Where Lambos turn into bus tickets...\n\n"
+        "⚡ Choose your leverage (1-125x):\n"
+        "The more leverage, the more fun! 🫡\n"
+        "(or a faster total wipeout, lol)\n\n"
+        "Send a number between 1-125..."
     )
     
     if update.callback_query:
         logging.info("Start triggered by callback")
-        await update.callback_query.answer()  # Acknowledge the callback
+        await update.callback_query.answer()  # Acknowledge callback
         await update.callback_query.edit_message_text(start_message)
     else:
         logging.info("Start triggered by command")
@@ -51,168 +49,153 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return LEVERAGE
 
+
 async def set_leverage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Setzt den Hebel für das Trading."""
+    """Sets the leverage for trading."""
     try:
-        # Handle both callback query and text message
-        if update.callback_query:
-            query = update.callback_query
-            leverage = int(query.data.split('_')[1])  # leverage_X -> X
-            await query.answer()  # Acknowledge the button click
-        else:
-            leverage = int(update.message.text)
-        
+        leverage = int(update.message.text)
         if 1 <= leverage <= MAX_LEVERAGE:
-            game = context.user_data.get('game')
-            if not game:
-                game = LeverageGame()
-                context.user_data['game'] = game
+            context.user_data['game'].leverage = leverage
             
-            game.leverage = leverage
-            
-            # Leverage comments based on size
-            leverage_comment = "🐔 Playing it safe? What a coward..." if leverage < 10 else \
-                             "😎 Now we're talking! Still a bit soft tho" if leverage < 30 else \
-                             "🔥 ABSOLUTE DEGEN ENERGY! LFG!" if leverage < 50 else \
-                             "💀 RIP BOZO! Time to update that LinkedIn!"
-            
-            message = (
-                f"{leverage_comment}\n\n"
-                f"⚡ {leverage}x leverage activated! NGMI\n\n"
-                "💰 Now your position size (100-10000 $):\n"
-                "Remember: Real degens go all-in with rent money! 🎰"
+            # Fun comments based on chosen leverage
+            leverage_comment = (
+                "🐔 A bit conservative... but okay!" if leverage < 10 else
+                "😎 Solid Degen Move!" if leverage < 30 else
+                "🔥 ABSOLUTE CHAD ENERGY!" if leverage < 50 else
+                "💀 RIP BOZO! Get ready for loss porn!"
             )
             
-            if update.callback_query:
-                await query.edit_message_text(message)
-            else:
-                await update.message.reply_text(message)
-            
+            await update.message.reply_text(
+                f"{leverage_comment}\n\n"
+                f"⚡ {leverage}x leverage activated!\n\n"
+                "💰 Now, enter your bet (100-10000 $):\n"
+                "Remember: Only true degens go all-in! 🎰"
+            )
             return POSITION_SIZE
         else:
-            error_message = "❌ Bruh... can you even read? 1-125x or go back to school! 🥴"
-            if update.callback_query:
-                await query.edit_message_text(error_message)
-            else:
-                await update.message.reply_text(error_message)
+            await update.message.reply_text(
+                "❌ Bruh... 1-125x or are you too high to read? 🥴"
+            )
             return LEVERAGE
-    except (ValueError, IndexError):
-        error_message = "❌ That's not a number, that's your IQ! 🤦‍♂️"
-        if update.callback_query:
-            await update.callback_query.edit_message_text(error_message)
-        else:
-            await update.message.reply_text(error_message)
+    except ValueError:
+        await update.message.reply_text("❌ Dude, that's not a number! 🤦‍♂️")
         return LEVERAGE
 
+
 async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Setzt die Position Size für das Trading."""
+    """Sets the bet size for trading."""
     try:
         position = int(update.message.text)
         if MIN_POSITION <= position <= MAX_POSITION:
             game = context.user_data['game']
             game.position_size = position
             
-            # Size comments
-            size_comment = "🐜 Ant-sized bet... do you even degen?" if position < 1000 else \
-                          "🦊 Starting to look serious!" if position < 5000 else \
-                          "🦍 GORILLA BALLS ENERGY! THIS IS THE WAY!"
+            # Bet size comments
+            size_comment = (
+                "🐜 Ant bet... but okay!" if position < 1000 else
+                "🦊 Fox energy!" if position < 5000 else
+                "🦍 GORILLA SIZED BET! LFG!!!"
+            )
             
             keyboard = [
                 [
-                    InlineKeyboardButton("🎰 SEND IT!", callback_data='trade'),
-                    InlineKeyboardButton("🐔 Run away", callback_data='quit')
+                    InlineKeyboardButton("🎰 YOLO IT!", callback_data='trade'),
+                    InlineKeyboardButton("🐔 Exit", callback_data='quit')
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                f"🎰 READY TO GET REKT 🎰\n"
+                f"🎰 SETUP READY TO DEGEN 🎰\n"
                 "═══════════════════\n"
                 f"{size_comment}\n"
-                f"💼 Your future debt: ${position:,.2f}\n"
-                f"⚡ Pain multiplier: {game.leverage}x\n"
-                f"📈 Entry to hell: ${game.initial_price:,.2f}\n"
-                f"💀 Liquidation imminent: ${game.calculate_liquidation_price():,.2f}\n"
+                f"💼 Bags: ${position:,.2f}\n"
+                f"⚡ Leverage: {game.leverage}x\n"
+                f"📈 Entry: ${game.initial_price:,.2f}\n"
+                f"💀 Liquidation Price: ${game.calculate_liquidation_price():,.2f}\n"
                 "───────────────\n"
-                "🚀 Ready to update that resume? 🚀",
+                "🚀 Ready to get rekt? 🚀",
                 reply_markup=reply_markup
             )
             return TRADING
         else:
             await update.message.reply_text(
-                f"⚠️ Pick a number between ${MIN_POSITION} and ${MAX_POSITION}!\n"
-                "Even degens can count, right? 🤔"
+                f"⚠️ Please choose a bet between ${MIN_POSITION} and ${MAX_POSITION}!"
             )
             return POSITION_SIZE
     except ValueError:
-        await update.message.reply_text("❌ That's a number like LUNA is a stablecoin! Try again!")
+        await update.message.reply_text("❌ Please enter a valid number!")
         return POSITION_SIZE
+
 
 async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Führt einen Handelszug aus."""
     query = update.callback_query
-    
+
     try:
-        logging.info(f"Trade callback erhalten: {query.data}")
+        logging.info(f"Trade callback received: {query.data}")
         await query.answer()
-        
+
+        # Validate game state...
         if not context.user_data.get('game'):
             logging.warning("Kein aktives Spiel gefunden")
             await query.edit_message_text(
-                "⚠️ Error: No active game.\n"
-                "Start a new one and lose money properly! 🎰"
+                "⚠️ Fehler: Kein aktives Spiel.\nBitte starte ein neues Spiel"
             )
-            context.user_data.pop('game', None)  # Clean up any invalid game state
+            context.user_data.pop('game', None)
             return ConversationHandler.END
-        
+
         game = context.user_data['game']
         logging.info(f"Game state: leverage={game.leverage}, position_size={game.position_size}, current_price={game.current_price}, is_liquidated={game.is_liquidated}")
-        
+
+        # --- SELL (PANIC SELL) FLOW: Full results with leaderboard and Twitter share ---
         if query.data == 'quit':
-            logging.info("Spiel wird beendet")
+            logging.info("Spiel wird beendet (Sell) – finalisiere Ergebnisse")
             stats = game.get_stats()
-            
-            # Get username for final results
+
+            # Leaderboard updaten
+            from ..models.leaderboard import Leaderboard
+            leaderboard = Leaderboard()
             user = query.from_user
             user_name = f"@{user.username}" if user.username else "Anonym"
-            
-            # Add score to leaderboard if available
-            game_handler = context.bot_data.get('game_handler')
-            if game_handler and game_handler.leaderboard:
-                game_handler.leaderboard.add_score(
-                    username=user_name,
-                    score=stats['score'],
-                    leverage=stats['leverage'],
-                    pnl=stats['profit_loss'],
-                    ticks=stats['ticks']
-                )
-                # Get leaderboard text
-                leaderboard_text = game_handler.leaderboard.format_leaderboard()
-            else:
-                leaderboard_text = ""
-            
-            # Create tweet text
+            leaderboard.add_score(user_name, stats['score'], game.leverage, stats['profit_loss'], game.ticks)
+
+            # ------------------------------
+            # Erstelle Top 3 Text für den Twitter-Share
+            top_three = leaderboard.get_top_10()[:3]
+            prizes = ["100$ in $UDEGEN", "50$ in $UDEGEN", "25$ in $UDEGEN"]
+            top_text_lines = []
+            for i, entry in enumerate(top_three):
+                username_entry = entry['username']
+                # Sicherstellen, dass der Username mit @ beginnt
+                if not username_entry.startswith('@'):
+                    username_entry = f"@{username_entry}"
+                top_text_lines.append(f"{i+1}. {username_entry} – {prizes[i]}")
+            top_three_text = "\n".join(top_text_lines)
+
+            # Hole das variable Auszahlungsdatum (z.B. letzter Tag des Monats)
+            prize_date = leaderboard.get_prize_date()
+
+            # ------------------------------
+            # Erstelle den ultra-crazy Twitter-Share Text im UDEGEN Meme Style
             tweet_text = (
-                f"🎮 Just got REKT on LeverageBot!\n"
-                f"💰 Damage Report: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:+.1f}%)\n"
-                f"⚡ {stats['leverage']}x leverage because I hate money\n"
-                f"🎲 Survived: {stats['ticks']} ticks before liquidation\n"
-                f"🏆 Score: {stats['score']:,.1f}\n"
-                f"\n🤖 @UDEGENBot - Where dreams become nightmares"
+                f"🚀 YO, I just went FULL DEGEN in LeverageBot!\n"
+                f"🏆 Final Score: {stats['score']:,.1f} DEGEN Points\n"
+                f"🎲 Survived: {stats['ticks']} ticks at {game.leverage}x!\n"
+                f"💰 P&L: ${stats['profit_loss']:,.2f} – Straight-up wild gains!\n\n"
+                f"🔥 TOP DEGENS 🔥\n{top_three_text}\n\n"
+                f"📆 Prizes drop on {prize_date}!\n"
+                f"👉 JOIN US, get in the game & WIN\n"
+        
             )
-            
-            # Create the Twitter Share URL
+
+            # Erstelle die Twitter Share URL
             tweet_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
-            
-            keyboard = [
-                [
-                    InlineKeyboardButton("🎮 Neues Spiel", callback_data='start'),
-                    InlineKeyboardButton("🐦 Share on Twitter", url=tweet_url)
-                ]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            # Erstelle die finale Quit-Nachricht inklusive Leaderboard-Text
+            leaderboard_text = leaderboard.format_leaderboard()
             message = (
-                f"🏁 Trading beendet!\n"
+                f"🏁 Your mum came in... trading closed!\n"
                 "═══════════════════\n"
                 f"👤 Trader: {user_name}\n"
                 f"💰 Finaler P&L: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:.1f}%)\n"
@@ -221,47 +204,42 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "═══════════════════\n\n"
                 f"{leaderboard_text}"
             )
-            await query.edit_message_text(
-                message,
-                reply_markup=reply_markup
-            )
-            logging.info("Game ended by selling, cleaning up state")
-            context.user_data.pop('game', None)  # Clean up game state
-            return LEVERAGE  # Return to leverage state for new game
-        
-        # Clear existing price steps and generate new ones
+
+            keyboard = [
+                [
+                    InlineKeyboardButton("🎮 Ape in again", callback_data='start'),
+                    InlineKeyboardButton("🐦 Share on Twitter", url=tweet_url)
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(message, reply_markup=reply_markup)
+            logging.info("Sell complete – cleaning up game state")
+            context.user_data.pop('game', None)
+            return LEVERAGE  # Zurück zum Start für ein neues Spiel
+
+        # --- CONTINUE (TRADE) FLOW: Run animation for price movement ---
         game.price_steps = []
         game.generate_price_movement()
-        is_liquidated = False
-        
-        # Animation delay configuration
-        ANIMATION_DELAY = 0.5  # Consistent delay between price updates
-        
-        # Zeige die Preisbewegung in Schritten an
+        ANIMATION_DELAY = 0.5  # Konsistente Verzögerung zwischen Preisupdates
+
         for current_price in game.price_steps:
             try:
                 game.current_price = current_price
                 logging.info(f"Price step: current_price={current_price}, liq_price={game.calculate_liquidation_price()}")
-                
+
                 # Berechne temporären P&L für diesen Schritt
                 temp_pl = game.position_size * ((current_price - game.initial_price) / game.initial_price) * game.leverage
                 price_change = ((current_price - game.initial_price) / game.initial_price) * 100
-                
-                # Prüfe auf Liquidation
+
+                # Prüfe auf Liquidation während der Animation
                 if current_price <= game.calculate_liquidation_price():
-                    is_liquidated = True
                     logging.info("Liquidation während Animation erkannt")
                     game.is_liquidated = True
                     game.profit_loss = -game.position_size
                     game.increment_tick()
-                    
                     stats = game.get_stats()
-                    keyboard = [
-                        [
-                            InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
-                        ]
-                    ]
-                    reply_markup = InlineKeyboardMarkup(keyboard)
+
                     message = (
                         "☠️ GET REKT LMAO! ☠️\n"
                         "═══════════════════\n"
@@ -275,40 +253,23 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "Score: 0 (bruh...)\n"
                         "═══════════════════"
                     )
-                    
-                    await query.edit_message_text(
-                        message,
-                        reply_markup=reply_markup
-                    )
-                    logging.info("Game ended by liquidation, cleaning up state")
-                    context.user_data.pop('game', None)  # Clean up game state
+                    keyboard = [[InlineKeyboardButton("🎮 Ape in again", callback_data='start')]]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await query.edit_message_text(message, reply_markup=reply_markup)
+                    logging.info("Liquidation complete – cleaning up game state")
+                    context.user_data.pop('game', None)
                     return LEVERAGE
-                # Bestimme Emojis und Messages
+
+                # Dynamische Updates während der Animation
                 trend_emoji = "📈" if price_change > 0 else "📉"
-                move_emoji = "🚀" if price_change > 5 else \
-                           "📈" if price_change > 0 else \
-                           "📉" if price_change > -5 else \
-                           "💥"
-                
-                status_msg = "PUMP IT! 🚀" if price_change > 5 else \
-                           "Number go up! 📈" if price_change > 0 else \
-                           "Dip buying time! 🎯" if price_change > -5 else \
-                           "DAMP IT! 📉"
-                
-                # Calculate portfolio values
+                move_emoji = "🚀" if price_change > 5 else "📈" if price_change > 0 else "📉" if price_change > -5 else "💥"
+                status_msg = "PUMP IT! 🚀" if price_change > 5 else "Number go up! 📈" if price_change > 0 else "Dip buying time! 🎯" if price_change > -5 else "DAMP IT! 📉"
+
                 portfolio_value = game.calculate_portfolio_value()
                 portfolio_change = ((portfolio_value / game.position_size) - 1) * 100
-                
-                # Determine emojis
-                portfolio_emoji = "🐋" if portfolio_change > 50 else \
-                               "🦍" if portfolio_change > 20 else \
-                               "🐂" if portfolio_change > 0 else \
-                               "🐻" if portfolio_change > -10 else \
-                               "💀"
-                
+                portfolio_emoji = "🐋" if portfolio_change > 50 else "🦍" if portfolio_change > 20 else "🐂" if portfolio_change > 0 else "🐻" if portfolio_change > -10 else "💀"
                 pl_emoji = "🤑" if temp_pl > 0 else "🤡"
-                
-                # Update message during animation
+
                 message = (
                     f"{move_emoji} {status_msg} {trend_emoji}\n"
                     "═══════════════════\n"
@@ -326,71 +287,55 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"🏆 DEGEN Score: {game.calculate_score():,.1f}\n"
                     "═══════════════════"
                 )
-                
+
                 try:
-                    await query.edit_message_text(
-                        message,
-                        reply_markup=None  # No buttons during animation
-                    )
+                    await query.edit_message_text(message, reply_markup=None)
                 except telegram.BadRequest as e:
                     if "message is not modified" not in str(e).lower():
                         raise
-                
-                await asyncio.sleep(ANIMATION_DELAY)  # Consistent animation delay
-                
+
+                await asyncio.sleep(ANIMATION_DELAY)
             except telegram.BadRequest as e:
                 if "message is not modified" not in str(e).lower():
                     raise
                 await asyncio.sleep(0.2)
                 continue
-        
-        # Finaler Update nach der Animation
-        if game.update_price():  # Returns True if liquidated
+
+        # Finaler Update nach der Animation (falls nicht liquidiert)
+        if game.update_price():  # Gibt True zurück, falls nach der Animation liquidiert wird
             logging.info("Liquidation nach Animation erkannt")
-            try:
-                stats = game.get_stats()  # Get final stats before cleanup
-                logging.info(f"Finale Liquidation stats: {stats}")
-                keyboard = [
-                    [
-                        InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
-                    ]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                message = (
-                    "☠️ GET REKT LMAO! ☠️\n"
-                    "═══════════════════\n"
-                    "🤡 Congratulations!\n"
-                    "You played yourself!\n"
-                    "───────────────\n"
-                    f"💸 Verloren: ${abs(stats['profit_loss']):,.2f}\n"
-                    f"🪦 Überlebt: {stats['ticks']} ticks\n"
-                    "───────────────\n"
-                    "🏆 GAME OVER!\n"
-                    "Score: 0 (bruh...)\n"
-                    "═══════════════════"
-                )
-                await query.answer()  # Acknowledge the callback
-                await query.edit_message_text(
-                    message,
-                    reply_markup=reply_markup
-                )
-                logging.info("Game ended by liquidation, cleaning up state")
-                context.user_data.pop('game', None)  # Clean up game state
-                return LEVERAGE  # Return to leverage state for new game
-            except telegram.BadRequest as e:
-                if "message is not modified" not in str(e).lower():
-                    raise   
+            stats = game.get_stats()
+            message = (
+                "☠️ GET REKT LMAO! ☠️\n"
+                "═══════════════════\n"
+                "🤡 Congratulations!\n"
+                "You played yourself!\n"
+                "───────────────\n"
+                f"💸 Lost: ${abs(stats['profit_loss']):,.2f}\n"
+                f"🪦 Survived: {stats['ticks']} ticks\n"
+                "───────────────\n"
+                "🏆 GAME OVER!\n"
+                "Score: 0 (bruh...)\n"
+                "═══════════════════"
+            )
+            keyboard = [[InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(message, reply_markup=reply_markup)
+            logging.info("Game ended by liquidation after animation – cleaning up state")
+            context.user_data.pop('game', None)
+            return LEVERAGE
+
+        # Falls nicht liquidiert, zeige die aktualisierte Performance mit Optionen "Weiter" oder "Verkaufen"
         stats = game.get_stats()
         logging.info(f"Finale Stats: {stats}")
-            
-        # DEGEN Performance Messages
-        result_msg = "GIGACHAD MOVE! 🐋" if stats['profit_loss'] > stats['position_size'] else \
-                   "NICE GAINS BRO! 🦍" if stats['profit_loss'] > 0 else \
-                   "NGMI BRUH... 🤡"
-        
+        result_msg = (
+            "GIGACHAD MOVE! 🐋" if stats['profit_loss'] > game.position_size else
+            "NICE GAINS BRO! 🦍" if stats['profit_loss'] > 0 else
+            "NGMI BRUH... 🤡"
+        )
         pl_emoji = "🤑" if stats['profit_loss'] > 0 else "🤡"
         portfolio_emoji = "🦍" if stats['portfolio_change'] > 0 else "💀"
-        
+
         message = (
             f"{result_msg}\n"
             "═══════════════════\n"
@@ -410,64 +355,29 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{stats['score']:,.1f} DEGEN Points!\n"
             "═══════════════════"
         )
-        
-        # After animation completes - show Weiter/Verkaufen buttons
         keyboard = [
             [
-                InlineKeyboardButton("🎲 Weiter", callback_data='trade'),
-                InlineKeyboardButton("💰 Verkaufen", callback_data='quit')
+                InlineKeyboardButton("🎲 Diamond Hands", callback_data='trade'),
+                InlineKeyboardButton("💰 Panic Sell", callback_data='quit')
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         try:
-            await query.edit_message_text(
-                message,
-                reply_markup=reply_markup
-            )
+            await query.edit_message_text(message, reply_markup=reply_markup)
         except telegram.BadRequest as e:
             if "message is not modified" not in str(e).lower():
                 logging.error(f"Fehler beim Update der Nachricht: {str(e)}")
-                await query.edit_message_text(
-                    "⚠️ Ein Fehler ist aufgetreten.\nBitte starte ein neues Spiel"
-                )
-                context.user_data.pop('game', None)  # Clean up game state
+                await query.edit_message_text("⚠️ There was an error\nTry to start again")
+                context.user_data.pop('game', None)
                 return ConversationHandler.END
-        
-        return TRADING                
+
+        return TRADING
+
     except Exception as e:
         logging.error(f"Fehler im Trade Handler: {str(e)}")
         try:
-            await query.edit_message_text(
-                "⚠️ Ein Fehler ist aufgetreten.\nBitte starte ein neues Spiel"
-            )
-            context.user_data.pop('game', None)  # Clean up game state
-        except:
+            await query.edit_message_text("⚠️ There was an error\nTry to start again")
+            context.user_data.pop('game', None)
+        except Exception:
             pass
         return ConversationHandler.END
-
-async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Zeigt die Bestenliste an"""
-    query = update.callback_query
-    if not query:
-        return
-            
-    await query.answer()
-    
-    if not hasattr(context, 'handler') or not context.handler.leaderboard:
-        await query.edit_message_text(
-            "⚠️ Bestenliste ist nicht verfügbar!",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
-            ]])
-        )
-        return
-            
-    leaderboard_text = context.handler.leaderboard.format_leaderboard()
-        
-    await query.edit_message_text(
-        leaderboard_text,
-        reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
-        ]])
-    )

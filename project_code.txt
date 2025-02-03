@@ -1,0 +1,1119 @@
+Projektstruktur:
+===============
+
+./
+│   └──.env
+│   └──README.md
+│   └──export_code.py
+│   └──main.py
+│   └──requirements.txt
+│   └──data/
+│   └──src/
+│   │   └──__init__.py
+│   │   └──utils/
+│   │   │   └──__init__.py
+│   │   │   └──process_lock.py
+│   │   └──models/
+│   │   │   └──__init__.py
+│   │   │   └──leaderboard.py
+│   │   │   └──leverage_game.py
+│   │   └──handlers/
+│   │   │   └──__init__.py
+│   │   │   └──admin_handlers.py
+│   │   │   └──game_handlers.py
+│   │   │   └──help_handlers.py
+
+
+================================================================================
+File: main.py
+================================================================================
+
+import logging
+import os
+import sys
+from dotenv import load_dotenv
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
+from src.handlers.game_handlers import (
+    start_command,
+    set_leverage,
+    set_position,
+    trade,
+    LEVERAGE,
+    POSITION_SIZE,
+    TRADING
+)
+from src.handlers.help_handlers import (
+    help_command,
+    basics_command,
+    interface_command,
+    liquidation_command,
+    tips_command
+)
+
+# Logging konfigurieren
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('bot.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+def main():
+    """Startet den Bot."""
+    try:
+        # Lade Umgebungsvariablen
+        load_dotenv()
+        
+        # Bot Token aus Umgebungsvariablen laden
+        token = os.getenv('BOT_TOKEN')
+        if not token:
+            raise ValueError("Kein BOT_TOKEN in .env Datei gefunden!")
+        
+        # Application erstellen
+        application = Application.builder().token(token).build()
+        
+        # Conversation Handler für das Trading-Spiel
+        conv_handler = ConversationHandler(
+            entry_points=[
+                CommandHandler('start', start_command),
+            ],
+            states={
+                LEVERAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_leverage)],
+                POSITION_SIZE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_position)],
+                TRADING: [CallbackQueryHandler(trade)]
+            },
+            fallbacks=[CommandHandler('start', start_command)]
+        )
+        
+        # Handler hinzufügen
+        application.add_handler(conv_handler)
+        application.add_handler(CallbackQueryHandler(start_command, pattern='^start$'))  # Handle "Neues Spiel" button
+        
+        # Help Handler hinzufügen
+        application.add_handler(CommandHandler('help', help_command))
+        application.add_handler(CommandHandler('basics', basics_command))
+        application.add_handler(CommandHandler('interface', interface_command))
+        application.add_handler(CommandHandler('liquidation', liquidation_command))
+        application.add_handler(CommandHandler('tips', tips_command))
+        
+        # Bot starten
+        logger.info("Bot wird gestartet...")
+        application.run_polling()
+        
+    except Exception as e:
+        logger.error(f"Kritischer Fehler: {str(e)}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+
+
+================================================================================
+File: src/handlers/game_handlers.py
+================================================================================
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, error as telegram
+from telegram.ext import ContextTypes, ConversationHandler
+from ..models.leverage_game import LeverageGame
+from ..models.leaderboard import Leaderboard
+
+import logging
+import asyncio
+import urllib.parse  # Add this line at the beginning of the file
+
+# States für den ConversationHandler
+LEVERAGE, POSITION_SIZE, TRADING = range(3)
+
+# Konfigurationswerte
+MAX_LEVERAGE = 125
+MIN_POSITION = 100
+MAX_POSITION = 10000
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Startet den Leverage-Simulator."""
+    logging.info("Start command triggered")
+    
+    # Clean up previous game state
+    if 'game' in context.user_data:
+        old_game = context.user_data.pop('game')
+        del old_game  # Ensure proper cleanup
+    
+    # Initialize new game
+    game = LeverageGame()
+    context.user_data['game'] = game
+    
+    start_message = (
+        "🎰 YO DEGEN, READY TO LOSE SOME MONEY? 🎰\n"
+        "───────────────\n"
+        "🤡 Willkommen im UDEGEN Casino!\n"
+        "Wo Lambos zu Busfahrkarten werden...\n\n"
+        "⚡ Wähle deinen Hebel (1-125x):\n"
+        "Je mehr Hebel, desto mehr Spaß! 🫡\n"
+        "(oder schnellerer Totalverlust lol)\n\n"
+        "Sende eine Zahl zwischen 1-125..."
+    )
+    
+    if update.callback_query:
+        logging.info("Start triggered by callback")
+        await update.callback_query.answer()  # Acknowledge the callback
+        await update.callback_query.edit_message_text(start_message)
+    else:
+        logging.info("Start triggered by command")
+        await update.message.reply_text(start_message)
+    
+    return LEVERAGE
+
+async def set_leverage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Setzt den Hebel für das Trading."""
+    try:
+        leverage = int(update.message.text)
+        if 1 <= leverage <= MAX_LEVERAGE:
+            context.user_data['game'].leverage = leverage
+            
+            # Lustige Kommentare basierend auf Hebelgröße
+            leverage_comment = "🐔 Bisschen konservativ... aber ok!" if leverage < 10 else \
+                             "😎 Solid Degen Move!" if leverage < 30 else \
+                             "🔥 ABSOLUTE CHAD ENERGY!" if leverage < 50 else \
+                             "💀 RIP BOZO! Gleich gibt's Loss Porn!"
+            
+            await update.message.reply_text(
+                f"{leverage_comment}\n\n"
+                f"⚡ {leverage}x Hebel aktiviert!\n\n"
+                "💰 Jetzt noch dein Einsatz (100-10000 $):\n"
+                "Vergiss nicht: Nur echte Degens gehen All-In! 🎰"
+            )
+            return POSITION_SIZE
+        else:
+            await update.message.reply_text(
+                "❌ Bruh... 1-125x oder bist du zu high zum Lesen? 🥴"
+            )
+            return LEVERAGE
+    except ValueError:
+        await update.message.reply_text("❌ Digga, das ist keine Zahl! 🤦‍♂️")
+        return LEVERAGE
+
+async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Setzt die Position Size für das Trading."""
+    try:
+        position = int(update.message.text)
+        if MIN_POSITION <= position <= MAX_POSITION:
+            game = context.user_data['game']
+            game.position_size = position
+            
+            # Size Kommentare
+            size_comment = "🐜 Ameisenwette... aber ok!" if position < 1000 else \
+                          "🦊 Fuchs-Energy!" if position < 5000 else \
+                          "🦍 GORILLA SIZED BET! LFG!!!"
+            
+            keyboard = [
+                [
+                    InlineKeyboardButton("🎰 YOLO IT!", callback_data='trade'),
+                    InlineKeyboardButton("🐔 Exit", callback_data='quit')
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"🎰 SETUP READY TO DEGEN 🎰\n"
+                "═══════════════════\n"
+                f"{size_comment}\n"
+                f"💼 Bags: ${position:,.2f}\n"
+                f"⚡ Hebel: {game.leverage}x\n"
+                f"📈 Entry: ${game.initial_price:,.2f}\n"
+                f"💀 Liq Price: ${game.calculate_liquidation_price():,.2f}\n"
+                "───────────────\n"
+                "🚀 Ready to get rekt? 🚀",
+                reply_markup=reply_markup
+            )
+            return TRADING
+        else:
+            await update.message.reply_text(
+                f"⚠️ Bitte wähle eine Position zwischen ${MIN_POSITION} und ${MAX_POSITION}!"
+            )
+            return POSITION_SIZE
+    except ValueError:
+        await update.message.reply_text("❌ Bitte gib eine gültige Zahl ein!")
+        return POSITION_SIZE
+
+async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Führt einen Handelszug aus."""
+    query = update.callback_query
+    
+    try:
+        logging.info(f"Trade callback erhalten: {query.data}")
+        await query.answer()
+        
+        # Get user information 
+        user_name = "Anonym"
+        
+        if not context.user_data.get('game'):
+            logging.warning("Kein aktives Spiel gefunden")
+            await query.edit_message_text(
+                "⚠️ Fehler: Kein aktives Spiel.\nBitte starte ein neues Spiel"
+            )
+            context.user_data.pop('game', None)  # Clean up any invalid game state
+            return ConversationHandler.END
+        
+        game = context.user_data['game']
+        logging.info(f"Game state: leverage={game.leverage}, position_size={game.position_size}, current_price={game.current_price}, is_liquidated={game.is_liquidated}")
+        
+        if query.data == 'quit':
+            logging.info("Spiel wird beendet")
+            stats = game.get_stats()
+            
+            # Hole den Usernamen für finale Ergebnisse
+            user = query.from_user
+            user_name = f"@{user.username}" if user.username else "Anonym"
+            
+            # ------------------------------
+            # Neu: Score in Leaderboard speichern/aktualisieren
+            from ..models.leaderboard import Leaderboard  # Import, falls noch nicht vorhanden
+            leaderboard = Leaderboard()  # Lädt die Daten aus data/leaderboard.json
+            leaderboard.add_score(user_name, stats['score'], game.leverage, stats['profit_loss'], game.ticks)
+            
+            # ------------------------------
+            # Erstelle Top 3 Text für den Twitter-Share
+            top_three = leaderboard.get_top_10()[:3]
+            prizes = ["100$ in $UDEGEN", "50$ in $UDEGEN", "25$ in $UDEGEN"]
+            top_text_lines = []
+            for i, entry in enumerate(top_three):
+                username_entry = entry['username']
+                # Sicherstellen, dass der Username mit @ beginnt
+                if not username_entry.startswith('@'):
+                    username_entry = f"@{username_entry}"
+                top_text_lines.append(f"{i+1}. {username_entry} – {prizes[i]}")
+            top_three_text = "\n".join(top_text_lines)
+            
+            # Hole das variable Auszahlungsdatum (z.B. letzter Tag des Monats)
+            prize_date = leaderboard.get_prize_date()
+            
+            # ------------------------------
+            # Erstelle den ultra-crazy Twitter-Share Text im UDEGEN Meme Style
+            tweet_text = (
+                f"🚀 YO, I just went FULL DEGEN in LeverageBot!\n"
+                f"🏆 Final Score: {stats['score']:,.1f} DEGEN Points\n"
+                f"🎲 Survived: {stats['ticks']} ticks at {game.leverage}x!\n"
+                f"💰 P&L: ${stats['profit_loss']:,.2f} – Straight-up wild gains!\n\n"
+                f"🔥 TOP DEGENS 🔥\n{top_three_text}\n\n"
+                f"📆 Prizes drop on {prize_date}!\n"
+                f"👉 JOIN US, get in the game & WIN the ultimate $UDEGEN prizes!\n"
+                f"#UDEGEN #Rugpull #exitscam"
+            )
+            
+            # Erstelle die Twitter Share URL
+            tweet_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
+            
+            # Erstelle Inline-Keyboard für Neues Spiel und Twitter-Share
+            keyboard = [
+                [
+                    InlineKeyboardButton("🎮 Neues Spiel", callback_data='start'),
+                    InlineKeyboardButton("🐦 Share on Twitter", url=tweet_url)
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Erstelle die Quit-Nachricht inklusive Leaderboard-Text
+            leaderboard_text = leaderboard.format_leaderboard()
+            message = (
+                f"🏁 Trading beendet!\n"
+                "═══════════════════\n"
+                f"👤 Trader: {user_name}\n"
+                f"💰 Finaler P&L: ${stats['profit_loss']:,.2f} ({stats['profit_loss_percent']:.1f}%)\n"
+                f"🎲 Ticks überlebt: {stats['ticks']}\n"
+                f"🏆 Final Score: {stats['score']:,.1f}\n"
+                "═══════════════════\n\n"
+                f"{leaderboard_text}"
+            )
+            
+            await query.edit_message_text(
+                message,
+                reply_markup=reply_markup
+            )
+            logging.info("Game ended by selling, cleaning up state")
+            context.user_data.pop('game', None)  # Clean up game state
+            return LEVERAGE  # Return to leverage state for new game
+
+        
+        # Clear existing price steps and generate new ones
+        game.price_steps = []
+        game.generate_price_movement()
+        is_liquidated = False
+        
+        # Animation delay configuration
+        ANIMATION_DELAY = 0.5  # Consistent delay between price updates
+        
+        # Zeige die Preisbewegung in Schritten an
+        for current_price in game.price_steps:
+            try:
+                game.current_price = current_price
+                logging.info(f"Price step: current_price={current_price}, liq_price={game.calculate_liquidation_price()}")
+                
+                # Berechne temporären P&L für diesen Schritt
+                temp_pl = game.position_size * ((current_price - game.initial_price) / game.initial_price) * game.leverage
+                price_change = ((current_price - game.initial_price) / game.initial_price) * 100
+                
+                # Prüfe auf Liquidation
+                if current_price <= game.calculate_liquidation_price():
+                    is_liquidated = True
+                    logging.info("Liquidation während Animation erkannt")
+                    game.is_liquidated = True
+                    game.profit_loss = -game.position_size
+                    game.increment_tick()
+                    
+                    stats = game.get_stats()
+                    keyboard = [
+                        [
+                            InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
+                        ]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    message = (
+                        "☠️ GET REKT LMAO! ☠️\n"
+                        "═══════════════════\n"
+                        "🤡 Congratulations!\n"
+                        "You played yourself!\n"
+                        "───────────────\n"
+                        f"💸 Lost: ${abs(stats['profit_loss']):,.2f}\n"
+                        f"🪦 Survived: {stats['ticks']} ticks\n"
+                        "───────────────\n"
+                        "🏆 GAME OVER!\n"
+                        "Score: 0 (bruh...)\n"
+                        "═══════════════════"
+                    )
+                    
+                    await query.edit_message_text(
+                        message,
+                        reply_markup=reply_markup
+                    )
+                    logging.info("Game ended by liquidation, cleaning up state")
+                    context.user_data.pop('game', None)  # Clean up game state
+                    return LEVERAGE
+                # Bestimme Emojis und Messages
+                trend_emoji = "📈" if price_change > 0 else "📉"
+                move_emoji = "🚀" if price_change > 5 else \
+                           "📈" if price_change > 0 else \
+                           "📉" if price_change > -5 else \
+                           "💥"
+                
+                status_msg = "PUMP IT! 🚀" if price_change > 5 else \
+                           "Number go up! 📈" if price_change > 0 else \
+                           "Dip buying time! 🎯" if price_change > -5 else \
+                           "DAMP IT! 📉"
+                
+                # Calculate portfolio values
+                portfolio_value = game.calculate_portfolio_value()
+                portfolio_change = ((portfolio_value / game.position_size) - 1) * 100
+                
+                # Determine emojis
+                portfolio_emoji = "🐋" if portfolio_change > 50 else \
+                               "🦍" if portfolio_change > 20 else \
+                               "🐂" if portfolio_change > 0 else \
+                               "🐻" if portfolio_change > -10 else \
+                               "💀"
+                
+                pl_emoji = "🤑" if temp_pl > 0 else "🤡"
+                
+                # Update message during animation
+                message = (
+                    f"{move_emoji} {status_msg} {trend_emoji}\n"
+                    "═══════════════════\n"
+                    f"💹 Price: ${current_price:,.2f} ({price_change:+.2f}%)\n"
+                    f"📈 Entry: ${game.initial_price:,.2f}\n"
+                    "───────────────\n"
+                    f"💼 Bags: ${portfolio_value:,.2f} {portfolio_emoji}\n"
+                    f"📊 Gainz: {portfolio_change:+.1f}%\n"
+                    f"{pl_emoji} PNL: ${temp_pl:,.2f}\n"
+                    "───────────────\n"
+                    f"⚡ Degen Mode: {game.leverage}x\n"
+                    f"💀 Liq Price: ${game.calculate_liquidation_price():,.2f}\n"
+                    "───────────────\n"
+                    f"🎲 Survivability: {game.ticks} ticks\n"
+                    f"🏆 DEGEN Score: {game.calculate_score():,.1f}\n"
+                    "═══════════════════"
+                )
+                
+                try:
+                    await query.edit_message_text(
+                        message,
+                        reply_markup=None  # No buttons during animation
+                    )
+                except telegram.BadRequest as e:
+                    if "message is not modified" not in str(e).lower():
+                        raise
+                
+                await asyncio.sleep(ANIMATION_DELAY)  # Consistent animation delay
+                
+            except telegram.BadRequest as e:
+                if "message is not modified" not in str(e).lower():
+                    raise
+                await asyncio.sleep(0.2)
+                continue
+        
+        # Finaler Update nach der Animation
+        if game.update_price():  # Returns True if liquidated
+            logging.info("Liquidation nach Animation erkannt")
+            try:
+                stats = game.get_stats()  # Get final stats before cleanup
+                logging.info(f"Finale Liquidation stats: {stats}")
+                keyboard = [
+                    [
+                        InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                message = (
+                    "☠️ GET REKT LMAO! ☠️\n"
+                    "═══════════════════\n"
+                    "🤡 Congratulations!\n"
+                    "You played yourself!\n"
+                    "───────────────\n"
+                    f"💸 Verloren: ${abs(stats['profit_loss']):,.2f}\n"
+                    f"🪦 Überlebt: {stats['ticks']} ticks\n"
+                    "───────────────\n"
+                    "🏆 GAME OVER!\n"
+                    "Score: 0 (bruh...)\n"
+                    "═══════════════════"
+                )
+                await query.answer()  # Acknowledge the callback
+                await query.edit_message_text(
+                    message,
+                    reply_markup=reply_markup
+                )
+                logging.info("Game ended by liquidation, cleaning up state")
+                context.user_data.pop('game', None)  # Clean up game state
+                return LEVERAGE  # Return to leverage state for new game
+            except telegram.BadRequest as e:
+                if "message is not modified" not in str(e).lower():
+                    raise   
+        stats = game.get_stats()
+        logging.info(f"Finale Stats: {stats}")
+            
+        # DEGEN Performance Messages
+        result_msg = "GIGACHAD MOVE! 🐋" if stats['profit_loss'] > stats['position_size'] else \
+                   "NICE GAINS BRO! 🦍" if stats['profit_loss'] > 0 else \
+                   "NGMI BRUH... 🤡"
+        
+        pl_emoji = "🤑" if stats['profit_loss'] > 0 else "🤡"
+        portfolio_emoji = "🦍" if stats['portfolio_change'] > 0 else "💀"
+        
+        message = (
+            f"{result_msg}\n"
+            "═══════════════════\n"
+            f"💼 Final Bags: ${stats['portfolio_value']:,.2f} {portfolio_emoji}\n"
+            f"📊 Gainz: {stats['portfolio_change']:+.1f}%\n"
+            f"{pl_emoji} PNL: ${stats['profit_loss']:,.2f}\n"
+            "───────────────\n"
+            f"📈 Entry: ${stats['initial_price']:,.2f}\n"
+            f"💹 Exit: ${stats['current_price']:,.2f}\n"
+            f"💀 Liquidation Price: ${stats['liquidation_price']:,.2f}\n"
+            "───────────────\n"
+            f"⚡ Degen Level: {stats['leverage']}x\n"
+            f"🎲 Survived: {stats['ticks']} ticks\n"
+            f"⏱️ Time: {stats['duration']}s\n"
+            "───────────────\n"
+            "🏆 FINAL SCORE\n"
+            f"{stats['score']:,.1f} DEGEN Points!\n"
+            "═══════════════════"
+        )
+        
+        # After animation completes - show Weiter/Verkaufen buttons
+        keyboard = [
+            [
+                InlineKeyboardButton("🎲 Weiter", callback_data='trade'),
+                InlineKeyboardButton("💰 Verkaufen", callback_data='quit')
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        try:
+            await query.edit_message_text(
+                message,
+                reply_markup=reply_markup
+            )
+        except telegram.BadRequest as e:
+            if "message is not modified" not in str(e).lower():
+                logging.error(f"Fehler beim Update der Nachricht: {str(e)}")
+                await query.edit_message_text(
+                    "⚠️ Ein Fehler ist aufgetreten.\nBitte starte ein neues Spiel"
+                )
+                context.user_data.pop('game', None)  # Clean up game state
+                return ConversationHandler.END
+        
+        return TRADING                
+    except Exception as e:
+        logging.error(f"Fehler im Trade Handler: {str(e)}")
+        try:
+            await query.edit_message_text(
+                "⚠️ Ein Fehler ist aufgetreten.\nBitte starte ein neues Spiel"
+            )
+            context.user_data.pop('game', None)  # Clean up game state
+        except:
+            pass
+        return ConversationHandler.END
+
+
+================================================================================
+File: src/handlers/admin_handlers.py
+================================================================================
+
+from telegram import Update
+from telegram.ext import ContextTypes, ConversationHandler
+from src.models.leaderboard import Leaderboard
+import os
+import logging
+import sys
+import subprocess
+
+class AdminHandler:
+    def __init__(self, leaderboard: Leaderboard, admin_ids=None, lock=None):
+        self.leaderboard = leaderboard
+        self.admin_ids = admin_ids or []
+        self.lock = lock
+        
+    def is_admin(self, user_id: int) -> bool:
+        """Überprüft, ob ein User Admin ist"""
+        return user_id in self.admin_ids
+    
+    async def clear_leaderboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handler für das Löschen der Bestenliste"""
+        if not update.message:
+            return ConversationHandler.END
+            
+        user_id = update.message.from_user.id
+        
+        if not self.is_admin(user_id):
+            await update.message.reply_text("⛔ Only admins can use this command!")
+            return ConversationHandler.END
+            
+        try:
+            self.leaderboard.clear()
+            await update.message.reply_text(
+                "✅ Leaderboard has been cleared!\n"
+                "───────────────\n"
+                "🧹 All scores deleted\n"
+                "🎮 Ready for new highscores!"
+            )
+            logging.info(f"Leaderboard cleared by admin {user_id}")
+        except Exception as e:
+            logging.error(f"Error clearing leaderboard: {e}")
+            await update.message.reply_text("❌ Error clearing leaderboard!")
+        
+        return ConversationHandler.END
+        
+    async def stop_bot(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handler to stop the bot"""
+        if not update.message:
+            return
+            
+        user_id = update.message.from_user.id
+        
+        if not self.is_admin(user_id):
+            await update.message.reply_text("⛔ Only admins can use this command!")
+            return
+            
+        try:
+            await update.message.reply_text("🛑 Stopping bot... Goodbye!")
+            logging.info(f"Bot stop initiated by admin {user_id}")
+            if self.lock:
+                self.lock.release()
+            # Give message time to send before exit
+            await context.application.stop()
+            sys.exit(0)
+        except Exception as e:
+            logging.error(f"Error stopping bot: {e}")
+            await update.message.reply_text("❌ Error stopping bot!")
+            
+    async def restart_bot(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handler to restart the bot"""
+        if not update.message:
+            return
+            
+        user_id = update.message.from_user.id
+        
+        if not self.is_admin(user_id):
+            await update.message.reply_text("⛔ Only admins can use this command!")
+            return
+            
+        try:
+            await update.message.reply_text("🔄 Restarting bot... See you in a sec!")
+            logging.info(f"Bot restart initiated by admin {user_id}")
+            if self.lock:
+                self.lock.release()
+            # Start new process
+            subprocess.Popen([sys.executable, sys.argv[0]])
+            # Give message time to send before exit
+            await context.application.stop()
+            sys.exit(0)
+        except Exception as e:
+            logging.error(f"Error restarting bot: {e}")
+            await update.message.reply_text("❌ Error restarting bot!")
+
+    async def clean_leaderboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Cleans the leaderboard."""
+        self.leaderboard.clear()
+        await update.message.reply_text("Leaderboard has been cleared!")
+
+    async def show_leaderboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Shows the current leaderboard."""
+        leaderboard_text = self.leaderboard.format_leaderboard()
+        await update.message.reply_text(leaderboard_text)
+
+
+================================================================================
+File: src/handlers/help_handlers.py
+================================================================================
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+HELP_SECTIONS = {
+    'main': """📈 *UDEGEN Leverage Trading Simulator*
+
+Willkommen beim UDEGEN Trading Simulator! 
+
+*Verfügbare Befehle:*
+/start - Starte ein neues Trading-Spiel
+/help - Zeige diese Hilfe
+/basics - Grundlagen des Leverage Trading
+/interface - Erkläre das Trading Interface
+/liquidation - Erkläre Liquidation
+/tips - Trading Tipps
+
+_Wähle einen Befehl für mehr Informationen_""",
+
+    'basics': """🎮 *Trading Grundlagen*
+
+*Hebel (Leverage):*
+• Wählbar: 1x bis 125x
+• Höherer Hebel bedeutet:
+  📈 Größere Gewinne möglich
+  📉 Höheres Risiko
+  ⚡ Mehr Volatilität
+  💀 Schnellere Liquidation
+
+*Position Size:*
+• Handelbar: $100 - $10,000
+• Bestimmt max. Verlust
+• Beispiel: $1,000 Position = max. $1,000 Verlust
+
+/help - Zurück zur Haupthilfe""",
+
+    'interface': """📊 *Trading Interface*
+
+*Preisinformationen:*
+💹 *Aktueller Preis:* Momentaner Handelspreis
+📊 *P&L (Profit/Loss):*
+  • Dollar: Aktueller Gewinn/Verlust
+  • Prozent: Rendite auf Position
+
+*Indikatoren:*
+⚡ *Hebel:* Dein aktiver Hebelfaktor
+💀 *Liquidationspreis:* Preis bei Totalverlust
+⏱️ *Laufzeit:* Aktive Handelsdauer
+
+*Buttons:*
+🎲 *Weiter:* Nächster Preisschritt
+💰 *Verkaufen:* Position schließen
+❌ *Beenden:* Spiel beenden
+
+/help - Zurück zur Haupthilfe""",
+
+    'liquidation': """💀 *Liquidation verstehen*
+
+*Berechnung:*
+• 1x Hebel: Keine Liquidation
+• Formel: Einstieg × (1 - 1/Hebel)
+
+*Beispiele:*
+• 10x: Liquidation bei -10%
+• 50x: Liquidation bei -2%
+• 100x: Liquidation bei -1%
+
+Je höher der Hebel, desto näher der
+Liquidationspreis am Einstiegspreis!
+
+/help - Zurück zur Haupthilfe""",
+
+    'tips': """💡 *Trading Tipps*
+
+1. *Start klein:*
+   • Beginne mit 2-5x Hebel
+   • Lerne die Bewegungen kennen
+
+2. *Risikomanagement:*
+   • Beachte den Liquidationspreis
+   • Nutze angemessene Position Size
+
+3. *Strategie:*
+   • Sei geduldig
+   • Beobachte Preisbewegungen
+   • Übe verschiedene Hebelgrößen
+
+⚠️ *Wichtig:*
+• Nur ein Simulator!
+• Nie mit echtem Geld handeln!
+• Echtes Trading hat zusätzliche
+  Faktoren wie Gebühren & Slippage
+
+/help - Zurück zur Haupthilfe"""
+}
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt die Haupthilfe an."""
+    await update.message.reply_text(
+        HELP_SECTIONS['main'],
+        parse_mode='Markdown'
+    )
+
+async def basics_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt Grundlagen an."""
+    await update.message.reply_text(
+        HELP_SECTIONS['basics'],
+        parse_mode='Markdown'
+    )
+
+async def interface_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt Interface-Hilfe an."""
+    await update.message.reply_text(
+        HELP_SECTIONS['interface'],
+        parse_mode='Markdown'
+    )
+
+async def liquidation_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt Liquidations-Hilfe an."""
+    await update.message.reply_text(
+        HELP_SECTIONS['liquidation'],
+        parse_mode='Markdown'
+    )
+
+async def tips_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Zeigt Trading-Tipps an."""
+    await update.message.reply_text(
+        HELP_SECTIONS['tips'],
+        parse_mode='Markdown'
+    )
+
+
+================================================================================
+File: src/models/leverage_game.py
+================================================================================
+
+import random
+import numpy as np
+from datetime import datetime
+
+class LeverageGame:
+    def __init__(self):
+        self._leverage = 1
+        self.position_size = 1000
+        self._initial_price = 100
+        self.current_price = 100
+        self.is_liquidated = False
+        self.profit_loss = 0
+        self.history = []
+        self.price_steps = []  # Für die Animation
+        self.ticks = 0
+        self.start_time = datetime.now()  # Initialize start_time
+        self.alpha = 0.5  # Hebelgewichtung für Score-Berechnung
+        self._calculate_liquidation_price()  # Einmalige Berechnung
+    
+    @property
+    def leverage(self):
+        return self._leverage
+    
+    @leverage.setter
+    def leverage(self, value):
+        # Setze den Hebel, aber berechne den Liquidierungspreis nicht neu,
+        # wenn das Spiel bereits gestartet wurde (ticks > 0).
+        if self.ticks == 0:
+            self._leverage = value
+            self._calculate_liquidation_price()
+        else:
+            self._leverage = value  # Falls sich der Hebel ändert, bleibt der alte Liquidierungspreis erhalten.
+    
+    @property
+    def initial_price(self):
+        return self._initial_price
+    
+    @initial_price.setter
+    def initial_price(self, value):
+        # Ähnlich: Beim Setzen des Initialpreises den Liquidierungspreis nur aktualisieren, wenn das Spiel noch nicht gestartet wurde.
+        if self.ticks == 0:
+            self._initial_price = value
+            self._calculate_liquidation_price()
+        else:
+            self._initial_price = value
+
+    def _calculate_liquidation_price(self):
+        """Interne Methode zur Berechnung des Liquidationspreises basierend auf initialem Hebel und Initialpreis"""
+        if self._leverage <= 1:
+            self.liquidation_price = 0
+        else:
+            liquidation_threshold = 1 / self._leverage
+            self.liquidation_price = self._initial_price * (1 - liquidation_threshold)
+
+    
+    def increment_tick(self):
+        """Erhöht den Tick-Counter"""
+        self.ticks += 1
+    
+    def reset_time(self):
+        """Setzt die Startzeit zurück"""
+        self.start_time = datetime.now()
+    
+    def get_elapsed_time(self):
+        """Gibt die verstrichene Zeit in Sekunden zurück"""
+        return round((datetime.now() - self.start_time).total_seconds(), 1)
+    
+    def calculate_liquidation_price(self):
+        """Gibt den Liquidationspreis zurück"""
+        return self.liquidation_price
+    
+    def generate_price_movement(self):
+        """Generiert eine Reihe von Preisbewegungen für die Animation"""
+        # Basisvolatilität plus Hebel-Einfluss (reduziert)
+        volatility = 0.002 * (1 + self.leverage/20)  # Reduzierte Basisvolatilität und Hebelwirkung
+        steps = 3  # Reduziert auf 3 Schritte
+        base_price = self.current_price  # Use base_price for continuous movement
+        self.price_steps = []
+        
+        # Bestimme Trend (60% Chance für Aufwärtstrend bei niedrigem Hebel)
+        trend_chance = max(0.4, 0.6 - (self.leverage/100))  # Hebel reduziert Chance auf Aufwärtstrend
+        is_uptrend = random.random() < trend_chance
+        
+        for _ in range(steps):
+            # Mehr Wahrscheinlichkeit für Bewegung in Trendrichtung
+            if len(self.price_steps) > 0 and random.random() < 0.8:  # 80% Chance für Trendbewegung
+                if is_uptrend:
+                    change = random.uniform(0, volatility)
+                else:
+                    change = random.uniform(-volatility, 0)
+            else:
+                change = random.uniform(-volatility, volatility)
+            
+            new_price = base_price * (1 + change)
+            
+            # Verhindere zu große Preissprünge
+            max_change = 0.05  # Maximale Änderung von 5%
+            if abs(new_price - base_price) / base_price > max_change:
+                if new_price > base_price:
+                    new_price = base_price * (1 + max_change)
+                else:
+                    new_price = base_price * (1 - max_change)
+            
+            self.price_steps.append(new_price)
+            base_price = new_price  # Update base_price for next step
+        
+        return self.price_steps
+    
+    def update_price(self):
+        """Aktualisiert den Preis und berechnet P&L"""
+        if not self.price_steps:
+            self.generate_price_movement()
+        
+        # Verwende den letzten generierten Preis
+        self.current_price = self.price_steps[-1]
+        
+        # Berechne P&L
+        price_change_percent = (self.current_price - self.initial_price) / self.initial_price
+        self.profit_loss = self.position_size * price_change_percent * self.leverage
+        
+        # Prüfe auf Liquidation
+        if self.current_price <= self.calculate_liquidation_price():
+            self.is_liquidated = True
+            self.profit_loss = -self.position_size
+            
+        self.history.append(self.current_price)
+        self.increment_tick()  # Erhöhe den Tick-Counter
+        return self.is_liquidated
+    
+    def get_next_price_step(self):
+        """Gibt den nächsten Preis für die Animation zurück"""
+        if not self.price_steps:
+            self.generate_price_movement()
+            return self.price_steps[0]
+        
+        if len(self.price_steps) > 1:
+            return self.price_steps.pop(0)
+        else:
+            # Generiere neue Schritte wenn alle verbraucht sind
+            self.generate_price_movement()
+            return self.price_steps[0]
+    
+    def calculate_score(self):
+        """
+        Berechnet den Score basierend auf dem Gewinn, der Positionsgröße, den überlebten Ticks und dem gewählten Hebel.
+        Score = Profit% * Ticks * Hebel^alpha
+        """
+        if self.is_liquidated:
+            return 0
+        
+        # Berechne den Profit-Prozentsatz
+        profit_percent = (self.profit_loss / self.position_size) * 100
+        # Berechne den Score: Profit% * Ticks * Hebel^alpha
+        score = profit_percent * self.ticks * (self.leverage ** self.alpha)
+        return score
+    
+    def calculate_portfolio_value(self):
+        """Berechnet den aktuellen Portfoliowert inkl. Gewinn/Verlust"""
+        return self.position_size + self.profit_loss
+
+    def get_stats(self):
+        """Gibt aktuelle Spielstatistiken zurück"""
+        portfolio_value = self.calculate_portfolio_value()
+        portfolio_change = ((portfolio_value / self.position_size) - 1) * 100
+        
+        return {
+            'current_price': self.current_price,
+            'initial_price': self.initial_price,
+            'profit_loss': self.profit_loss,
+            'profit_loss_percent': (self.profit_loss/self.position_size*100),
+            'portfolio_value': portfolio_value,
+            'portfolio_change': portfolio_change,
+            'leverage': self.leverage,
+            'position_size': self.position_size,
+            'liquidation_price': self.calculate_liquidation_price(),
+            'ticks': self.ticks,
+            'duration': self.get_elapsed_time(),
+            'price_trend': "📈" if self.current_price > self.initial_price else "📉",
+            'score': self.calculate_score()
+        }
+
+
+================================================================================
+File: src/models/leaderboard.py
+================================================================================
+
+# File: src/models/leaderboard.py
+
+import json
+import os
+from datetime import datetime, date
+import calendar
+from typing import List, Dict
+
+class Leaderboard:
+    def __init__(self, file_path: str = "data/leaderboard.json"):
+        # Stelle sicher, dass der data-Ordner existiert
+        directory = os.path.dirname(file_path)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
+        self.file_path = file_path
+        self.scores: List[Dict] = []
+        self.load()
+    
+    def load(self):
+        """Lädt die Bestenliste aus der JSON-Datei"""
+        if os.path.exists(self.file_path):
+            try:
+                with open(self.file_path, 'r') as f:
+                    self.scores = json.load(f)
+            except json.JSONDecodeError:
+                self.scores = []
+        else:
+            self.scores = []
+    
+    def save(self):
+        """Speichert die Bestenliste in die JSON-Datei"""
+        with open(self.file_path, 'w') as f:
+            json.dump(self.scores, f, indent=2)
+    
+    def add_score(self, username: str, score: float, leverage: int, pnl: float, ticks: int):
+        """
+        Fügt einen Score zur Bestenliste hinzu. 
+        Wenn ein Eintrag vom gleichen User existiert und der neue Score besser ist, wird der alte Eintrag gelöscht.
+        """
+        # Überprüfe, ob es bereits einen Eintrag für den User gibt
+        existing_entry = None
+        for entry in self.scores:
+            if entry['username'] == username:
+                existing_entry = entry
+                break
+        
+        # Falls ein Eintrag existiert und der neue Score besser ist, entferne ihn
+        if existing_entry:
+            if score > existing_entry['score']:
+                self.scores.remove(existing_entry)
+            else:
+                # Neuer Score ist nicht besser – nix ändern
+                return
+        
+        # Neuer Eintrag
+        new_entry = {
+            'username': username,
+            'score': score,
+            'leverage': leverage,
+            'pnl': pnl,
+            'ticks': ticks,
+            'timestamp': datetime.now().isoformat()
+        }
+        self.scores.append(new_entry)
+        
+        # Sortiere die Scores in absteigender Reihenfolge und behalte nur die Top 10
+        self.scores.sort(key=lambda x: x['score'], reverse=True)
+        self.scores = self.scores[:10]
+        
+        self.save()
+    
+    def get_top_10(self) -> List[Dict]:
+        """Gibt die Top 10 Scores zurück"""
+        return self.scores[:10]
+    
+    def clear(self):
+        """Löscht die Bestenliste"""
+        self.scores = []
+        self.save()
+    
+    def get_prize_date(self) -> str:
+        """
+        Berechnet das variable Datum, an dem die Preise ausgezahlt werden.
+        Hier: Letzter Tag des aktuellen Monats im Format DD.MM.YYYY.
+        """
+        today = date.today()
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        prize_date = date(today.year, today.month, last_day)
+        return prize_date.strftime("%d.%m.%Y")
+    
+    def format_leaderboard(self) -> str:
+        """
+        Formatiert die Bestenliste als ansprechende Nachricht mit UDEGEN-Slang, Icons und Preisinformationen.
+        """
+        if not self.scores:
+            leaderboard_text = (
+                "🏆 DEGEN LEADERBOARD 🏆\n"
+                "═══════════════════\n"
+                "No trades yet... be the first degen!\n"
+                "═══════════════════"
+            )
+        else:
+            leaderboard_text = "🏆 DEGEN LEADERBOARD 🏆\n═══════════════════\n"
+            for i, entry in enumerate(self.scores[:10]):
+                # Medal emojis für die Top-Plätze
+                position_emoji = {0: "🥇", 1: "🥈", 2: "🥉"}.get(i, "🎖️")
+                username = entry['username']
+                if not username.startswith('@'):
+                    username = f"@{username}"
+                leaderboard_text += f"{position_emoji} {i+1}. {username}\n"
+                leaderboard_text += f"   💰 Score: {entry['score']:.1f}\n"
+                leaderboard_text += f"   ⚡ {entry['leverage']}x | 💵 ${entry['pnl']:,.2f} | 🎲 {entry['ticks']} ticks\n"
+                # Füge Preise für die Top 3 hinzu
+                if i == 0:
+                    leaderboard_text += f"   🎉 Preis: 100$ in $UDEGEN\n"
+                elif i == 1:
+                    leaderboard_text += f"   🎉 Preis: 50$ in $UDEGEN\n"
+                elif i == 2:
+                    leaderboard_text += f"   🎉 Preis: 25$ in $UDEGEN\n"
+                leaderboard_text += "\n"
+            leaderboard_text += "═══════════════════\n"
+        
+        # Füge dynamisches Preisauszahlungsdatum hinzu
+        prize_date = self.get_prize_date()
+        leaderboard_text += f"🗓️ Preise werden am {prize_date} ausgezahlt!\n"
+        leaderboard_text += "🚀 Keep hustlin' and trade like a true degen!\n"
+        
+        return leaderboard_text
+
