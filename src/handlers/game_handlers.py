@@ -207,7 +207,7 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             keyboard = [
                 [
-                    InlineKeyboardButton("🎮 Ape in again", callback_data='start'),
+                    InlineKeyboardButton("🎮 Ape in again", callback_data='getrekt'),
                     InlineKeyboardButton("🐦 Share on Twitter", url=tweet_url)
                 ]
             ]
@@ -253,7 +253,7 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "Score: 0 (bruh...)\n"
                         "═══════════════════"
                     )
-                    keyboard = [[InlineKeyboardButton("🎮 Ape in again", callback_data='start')]]
+                    keyboard = [[InlineKeyboardButton("🎮 Ape in again", callback_data='getrekt')]]
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     await query.edit_message_text(message, reply_markup=reply_markup)
                     logging.info("Liquidation complete – cleaning up game state")
@@ -318,7 +318,7 @@ async def trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Score: 0 (bruh...)\n"
                 "═══════════════════"
             )
-            keyboard = [[InlineKeyboardButton("🎮 Neues Spiel", callback_data='start')]]
+            keyboard = [[InlineKeyboardButton("🎮 Neues Spiel", callback_data='getrekt')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(message, reply_markup=reply_markup)
             logging.info("Game ended by liquidation after animation – cleaning up state")

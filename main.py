@@ -73,7 +73,7 @@ def main():
         # Add conversation handler first (higher priority)
         conv_handler = ConversationHandler(
             entry_points=[
-                CommandHandler('start', start_command)
+                CommandHandler('getrekt', start_command)
             ],
             states={
                 LEVERAGE: [
@@ -98,7 +98,7 @@ def main():
         application.add_handler(CommandHandler('stop', admin_handler.stop_bot), group=1)
         
         # Add global callback handler for start button
-        application.add_handler(CallbackQueryHandler(start_command, pattern='^start$'))
+        application.add_handler(CallbackQueryHandler(start_command, pattern='^getrekt$'))
         
         # Add other command handlers (lower priority)
         application.add_handler(CommandHandler('help', help_command))
