@@ -1,102 +1,58 @@
-# 🚀 UDEGEN LEVERAGE TRADING SIMULATOR 💎
+# UDEGEN Leverage Trading Simulator Bot
 
-<div align="center">
+Ein Telegram Bot, der einen interaktiven Leverage-Trading-Simulator implementiert.
 
-![UDEGEN Banner](https://i.imgur.com/XYZ123.png)
+## Features
 
-### 💫 _"Sir, this is a casino"_ 💫
+- Hebel von 1x bis 125x
+- Konfigurierbare Position Size
+- Realistische Preissimulation
+- Liquidationsberechnung
+- P&L-Tracking
+- Interaktive Buttons
+- Emoji-basierte Benutzeroberfläche
 
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/UDEGENbot)
-[![UDEGEN](https://img.shields.io/badge/UDEGEN-🚀-orange?style=for-the-badge)](https://udegen.com)
+## Installation
 
-</div>
-
----
-
-## 🎮 WHAT IS THIS?
-
-This is not just another trading bot... This is a **LEVERAGE TRADING SIMULATOR** that lets you experience the pure adrenaline rush of trading with up to 125x leverage! 
-
-### 🎯 Why UDEGEN Simulator?
-
-- 🔥 Practice with **ZERO RISK**
-- 💪 Master leverage trading
-- 🏆 Compete on the leaderboard
-- 🎁 Win real $UDEGEN tokens
-
-> *"I went all in with 125x leverage and got liquidated in 3 seconds... 10/10 would DEGEN again!"* 
-> \- Average UDEGEN trader
-
-## 🚀 FEATURES
-
-### 💎 Core Features
-- 📈 Leverage up to **125x**
-- 💰 Position Size: **$100** to **$10,000**
-- 🎲 Realistic Price Simulation
-- 💥 Instant Liquidations
-- 📊 Real-time P&L Tracking
-- 🎮 Interactive UI
-- 🏆 Monthly Prizes in $UDEGEN
-
-### 🏆 Monthly Prizes
-1. 🥇 First Place: **$100** in $UDEGEN
-2. 🥈 Second Place: **$50** in $UDEGEN
-3. 🥉 Third Place: **$25** in $UDEGEN
-
-## 🛠️ INSTALLATION
-
+1. Python-Pakete installieren:
 ```bash
-# Clone this DEGEN repository
-git clone https://github.com/UDEGEN/leverage-simulator
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure your bot (see .env.example)
-cp .env.example .env
 ```
 
-## 🎮 HOW TO PLAY
-
-1. 🤖 Start bot with `/start`
-2. 📈 Choose leverage (1-125x)
-3. 💰 Set position size
-4. 🎲 TRADE AND PRAY
-5. 🏆 Get on leaderboard
-6. 💀 Get rekt (probably)
-
-## ⚠️ DISCLAIMER
-
-```python
-if trader.brain == "smooth":
-    print("Sir, this is a simulator!")
-    print("Don't trade real money based on this!")
-    print("Not financial advice!")
+2. Bot Token in `.env` Datei konfigurieren:
+```
+BOT_TOKEN=dein_bot_token
 ```
 
-## 🏗️ PROJECT STRUCTURE
+## Starten
 
-```
-UDEGEN-BOT/
-├── 🎮 src/
-│   ├── 🎲 models/
-│   │   └── leverage_game.py    # Where dreams are made
-│   └── 🎯 handlers/
-│       └── game_handlers.py    # Where dreams are crushed
-├── 🚀 main.py                  # Launch to the moon
-└── 📝 .env                     # Your secret sauce
+Bot starten:
+```bash
+python main.py
 ```
 
-## 🫡 JOIN THE DEGEN ARMY
+## Verwendung
 
-- 💬 [Telegram](https://t.me/UDEGEN)
-- 🐦 [Twitter](https://twitter.com/UDEGEN)
-- 🌐 [Website](https://udegen.com)
+1. Starte den Bot mit `/start`
+2. Wähle deinen Hebel (1-125x)
+3. Setze deine Position Size ($100-$10000)
+4. Trade mit den interaktiven Buttons
+5. Verkaufe oder werde liquidiert!
 
----
+## Projektstruktur
 
-<div align="center">
+```
+TGLevBot/
+├── src/
+│   ├── models/
+│   │   └── leverage_game.py    # Spiellogik
+│   └── handlers/
+│       └── game_handlers.py    # Telegram Handler
+├── main.py                     # Bot Hauptdatei
+├── requirements.txt            # Python Abhängigkeiten
+└── .env                        # Umgebungsvariablen
+```
 
-### 💎 WAGMI 💎
+## Warnung
 
-</div>
+Dies ist nur ein Simulator! Handel niemals mit echtem Geld basierend auf diesem Bot!

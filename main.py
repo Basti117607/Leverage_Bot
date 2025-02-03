@@ -41,7 +41,10 @@ def main():
         # Bot Token aus Umgebungsvariablen laden
         token = os.getenv('BOT_TOKEN')
         if not token:
-            raise ValueError("Kein BOT_TOKEN in .env Datei gefunden!")
+            raise ValueError("No BOT_TOKEN found in .env file, degen! Get your act together!")
+
+        # Logging message
+        logger.info("Bot is launching... Let's lose some cash, degen style!")
         
         # Application erstellen
         application = Application.builder().token(token).build()
